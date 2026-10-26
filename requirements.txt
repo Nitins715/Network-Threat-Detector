@@ -1,0 +1,21 @@
+# Core Data Science & Machine Learning
+pandas>=2.0.0
+numpy>=1.24.0
+scikit-learn>=1.3.0
+xgboost>=2.0.0
+joblib>=1.3.0
+shap>=0.44.0
+
+# Packet Ingestion & Telemetry
+scapy>=2.5.0
+
+# Executive PDF Reporting
+reportlab>=4.0.0
+
+# SOC Dashboard & Visualization
+streamlit>=1.30.0
+plotly>=5.18.0
+
+# API Service (Optional)
+fastapi>=0.100.0
+uvicorn>=0.23.0
