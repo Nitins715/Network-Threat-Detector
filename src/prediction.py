@@ -91,6 +91,9 @@ class ThreatPredictionEngine:
         aligned_df = aligned_df.fillna(0).replace([np.inf, -np.inf], 0)
         return aligned_df
 
+    # Alias for feature alignment
+    _align_features = prepare_features
+
     def predict_anomaly(self, X_df: pd.DataFrame) -> np.ndarray:
         """Computes anomaly scores normalized between [0, 1] relative to normal baseline."""
         if self.iso_num_cols is not None and hasattr(self.iso_forest, "decision_function"):
@@ -248,17 +251,17 @@ class ThreatPredictionEngine:
 
         return categories
 
-    def explain_flow(self, X_df: pd.DataFrame, flow_index: int, top_k: int = 5) -> dict:
+    def explain_flow(self, X_df: pd.DataFrame, flow_index: int = 0, top_k: int = 5) -> dict:
         """
         Uses Tree SHAP (from XGBoost) to explain exactly why a specific flow was flagged.
         Returns top attack drivers, mitigating factors, and human-readable analyst evidence.
         """
         import xgboost as xgb
 
-        if self.xgb_model is None or flow_index >= len(X_df):
-            return {"error": "Model or flow index unavailable"}
+        if self.xgb_model is None or X_df.empty or flow_index >= len(X_df):
+            return {"error": "Model or flow index unavailable", "top_factors": [], "attack_drivers": []}
 
-        row_df = X_df.iloc[[flow_index]]
+        row_df = self._align_features(X_df.iloc[[flow_index]])
         prep = self.xgb_model.named_steps['preprocessor']
         clf = self.xgb_model.named_steps['classifier']
 
@@ -294,11 +297,14 @@ class ThreatPredictionEngine:
                 display_val = ""
 
             features_info.append({
+                'feature': label,
                 'feature_key': raw_key,
                 'feature_label': label,
+                'value': display_val,
                 'raw_value': display_val,
                 'shap_value': round(float(val), 4),
-                'impact_pct': round((float(val) / pos_sum * 100), 1) if val > 0 else 0.0
+                'impact_pct': f"+{round((float(val) / pos_sum * 100), 1)}%" if val > 0 else f"{round((float(val) / pos_sum * 100), 1)}%",
+                'explanation': f"{label} pushes threat score by {val:+.3f}"
             })
 
         # Top positive attack drivers
@@ -324,7 +330,7 @@ class ThreatPredictionEngine:
         # Generate SOC Analyst Plain-English Explanation
         if attack_drivers:
             drivers_text = ", ".join([
-                f"{d['feature_label']} ({d['feature_key']}={d['raw_value']}, +{d['impact_pct']}%)"
+                f"{d['feature_label']} ({d['feature_key']}={d['raw_value']}, {d['impact_pct']})"
                 for d in attack_drivers[:3]
             ])
             summary = f"Flagged as malicious primarily due to: {drivers_text}."
@@ -334,6 +340,7 @@ class ThreatPredictionEngine:
         return {
             'flow_index': flow_index,
             'base_value': round(base_value, 4),
+            'top_factors': top_waterfall,
             'attack_drivers': attack_drivers,
             'benign_drivers': benign_drivers,
             'waterfall_features': top_waterfall,
@@ -349,7 +356,8 @@ class ThreatPredictionEngine:
 
         prep = self.xgb_model.named_steps['preprocessor']
         clf = self.xgb_model.named_steps['classifier']
-        X_trans = prep.transform(X_df)
+        X_aligned = self._align_features(X_df)
+        X_trans = prep.transform(X_aligned)
         f_names = [str(f) for f in prep.get_feature_names_out()]
         dmat = xgb.DMatrix(X_trans, feature_names=f_names)
 

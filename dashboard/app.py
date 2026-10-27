@@ -24,7 +24,8 @@ from src.prediction import ThreatPredictionEngine
 from src.live_capture import (
     get_available_interfaces,
     LiveCaptureSession,
-    simulate_live_traffic_capture
+    simulate_live_traffic_capture,
+    is_pcap_installed
 )
 from src.report_generator import generate_executive_pdf_report
 from src.feature_dictionary import FEATURE_DICTIONARY
@@ -156,6 +157,27 @@ with st.sidebar:
             index=0,
             help="Native Sniffer captures directly from your hardware adapter (requires Admin/Npcap). Live Stream Simulator feeds live pulses directly for safe testing."
         )
+
+        if sniff_engine == "Native Scapy Sniffer (Admin/Npcap)":
+            if not is_pcap_installed():
+                st.warning("⚠️ **Npcap Packet Driver Not Found**")
+                with st.expander("📥 How to Download & Install Npcap (1-Minute Setup)", expanded=True):
+                    st.markdown("""
+                    **Why is this needed?** Windows protects your network card and blocks Python from reading raw Wi-Fi/Ethernet packets without Npcap.
+                    
+                    **Step-by-Step Instructions:**
+                    1. **Download:** Click the button below to get the official installer (`npcap-setup.exe`).
+                    2. **Run Installer:** During setup, choose these recommended options:
+                       - ✅ **Check:** *"Install Npcap in WinPcap API-compatible Mode"* (Required for Scapy).
+                       - ⬜ **Uncheck:** *"Restrict Npcap driver's access to Administrators only"* (Allows normal users to sniff without running as Admin).
+                    3. **Restart:** Refresh this page or re-run the app.
+                    
+                    *(Note: On Linux or macOS, raw packet capture works natively without Npcap).*
+                    """)
+                    st.link_button("🌐 Download Free Npcap Installer", "https://npcap.com/#download", use_container_width=True)
+                    st.caption("💡 *Tip: You can also select **'Live Traffic Stream'** above for instant testing without installing anything.*")
+            else:
+                st.success("✅ **Npcap Active:** Ready to sniff physical network packets.")
 
         capture_duration = st.slider("Duration (seconds)", 3, 30, 5)
 
@@ -443,7 +465,7 @@ with main_tab_threat:
 
                 if selected_flow_idx is not None:
                     target_flow = flows_df.iloc[[selected_flow_idx]]
-                    explanation = engine.explain_flow(target_flow)
+                    explanation = engine.explain_flow(flows_df, flow_index=selected_flow_idx)
 
                     xai_col1, xai_col2 = st.columns([1.2, 1])
                     with xai_col1:

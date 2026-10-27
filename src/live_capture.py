@@ -7,7 +7,12 @@ from pathlib import Path
 # Silence harmless Scapy runtime warnings
 logging.getLogger("scapy.runtime").setLevel(logging.ERROR)
 
-from scapy.all import AsyncSniffer, wrpcap, IP, TCP, UDP, Raw
+from scapy.all import AsyncSniffer, wrpcap, IP, TCP, UDP, Raw, conf
+
+
+def is_pcap_installed() -> bool:
+    """Returns True if Npcap or WinPcap driver is available on the machine."""
+    return bool(getattr(conf, "use_pcap", False))
 
 
 def get_available_interfaces() -> dict:
@@ -53,13 +58,40 @@ class LiveCaptureSession:
 
     def start(self, filter_bpf: str = "ip"):
         """Starts asynchronous packet capture on the selected network adapter."""
+        # Check Windows Npcap and Administrator privileges
+        if os.name == 'nt' and not is_pcap_installed():
+            try:
+                import ctypes
+                is_admin = ctypes.windll.shell32.IsUserAnAdmin() != 0
+            except Exception:
+                is_admin = False
+
+            if not is_admin:
+                self.is_capturing = False
+                return False, (
+                    "Npcap packet capture driver is not installed, and PowerShell is not running as Administrator. "
+                    "The Windows kernel blocks physical network card sniffing without Npcap. "
+                    "Please install Npcap (https://npcap.com/#download) or launch terminal as Administrator. "
+                    "Or switch to 'Live Traffic Stream (Instant Demo)' for immediate testing."
+                )
+
         try:
-            self.sniffer = AsyncSniffer(
-                iface=self.interface,
-                filter=filter_bpf,
-                store=True
-            )
+            kwargs = {'iface': self.interface, 'store': True}
+            if is_pcap_installed():
+                if filter_bpf:
+                    kwargs['filter'] = filter_bpf
+            else:
+                kwargs['L2socket'] = conf.L3socket
+
+            self.sniffer = AsyncSniffer(**kwargs)
             self.sniffer.start()
+
+            # Short validation to detect immediate thread failure
+            time.sleep(0.08)
+            if hasattr(self.sniffer, 'thread') and self.sniffer.thread and not self.sniffer.thread.is_alive():
+                self.is_capturing = False
+                return False, "Sniffer thread exited immediately. Windows blocked raw socket binding."
+
             self.is_capturing = True
             self.start_time = time.time()
             return True, "Sniffer started successfully."
