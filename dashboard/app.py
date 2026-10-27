@@ -116,7 +116,7 @@ with st.sidebar:
 
     upload_mode = st.radio(
         "Select Input Source",
-        ["Demo Presets", "Upload File (.pcap / .csv)", "🎙️ Live Network Sniff"],
+        ["Upload File (.pcap / .csv)", "🎙️ Live Network Sniff"],
         index=0
     )
 
@@ -136,26 +136,6 @@ with st.sidebar:
                 pcap_bytes = uploaded_file.getvalue()
             else:
                 csv_df = pd.read_csv(uploaded_file)
-
-    elif upload_mode == "Demo Presets":
-        st.info("Select a pre-generated network traffic sample:")
-        demo_choice = st.selectbox(
-            "Demo Scenario",
-            [
-                "benign_traffic.pcap (Normal Browsing & DNS)",
-                "attack_synflood.pcap (SYN Flood / Reconnaissance)"
-            ]
-        )
-        if st.button("🚀 Load Preset Capture", use_container_width=True, type="primary"):
-            filename = demo_choice.split(" ")[0]
-            file_path = Path("data") / filename
-            if file_path.exists():
-                with open(file_path, "rb") as f:
-                    pcap_bytes = f.read()
-                source_name = filename
-                st.success(f"Loaded {filename}")
-            else:
-                st.error("Preset file not found in data/ directory. Run data/generate_pcaps.py first.")
 
     else:
         st.subheader("🎙️ Live Network Sniff")
@@ -243,9 +223,9 @@ with st.sidebar:
 st.title("🛡️ Network Threat Detector")
 st.markdown("Automated packet dissection, 32-feature UNSW-NB15 flow extraction, and ensemble threat verdict.")
 
-main_tab_threat, main_tab_analytics = st.tabs([
+main_tab_threat, main_tab_dictionary = st.tabs([
     "🛡️ SOC Threat Intelligence",
-    "📈 Analytics & Model Health"
+    "📖 UNSW-NB15 Feature Dictionary"
 ])
 
 # =========================================================
@@ -594,7 +574,7 @@ with main_tab_threat:
 
     else:
         # Landing Guide
-        st.info("👈 Please upload a `.pcap` / `.csv` file in the sidebar, or select a **Demo Preset** to begin analysis.")
+        st.info("👈 Please upload a `.pcap` / `.csv` file in the sidebar, or launch **🎙️ Live Network Sniff** to begin analysis.")
 
         c1, c2, c3 = st.columns(3)
         with c1:
@@ -609,257 +589,10 @@ with main_tab_threat:
 
 
 # =========================================================
-# TAB 2: Model Analytics & Health (ROC, Confusion Matrix, XAI)
+# TAB 2: UNSW-NB15 42-Feature Security Dictionary
 # =========================================================
-with main_tab_analytics:
-    st.subheader("📈 Model Analytics, Validation Curves & Feature Taxonomy")
-    st.caption("Rigorous evaluation on the 82,332-flow UNSW-NB15 benchmark test dataset, ROC-AUC trade-offs, and global feature importance.")
-
-    # 1. Benchmark Test Metrics
-    metrics_path = Path("reports") / "final_test_metrics.csv"
-    cm_path = Path("reports") / "confusion_matrices.json"
-
-    if metrics_path.exists():
-        metrics_df = pd.read_csv(metrics_path)
-
-        # Top KPI Cards for Weighted Ensemble
-        ensemble_row = metrics_df[metrics_df['Model'] == 'Weighted Ensemble'].iloc[0]
-        
-        an_c1, an_c2, an_c3, an_c4 = st.columns(4)
-        with an_c1:
-            st.markdown(f"""
-            <div class="metric-card">
-                <div class="metric-label">Weighted Ensemble ROC-AUC</div>
-                <div class="metric-value" style="color: #3b82f6;">{ensemble_row['ROC-AUC']:.4f}</div>
-            </div>
-            """, unsafe_allow_html=True)
-        with an_c2:
-            st.markdown(f"""
-            <div class="metric-card">
-                <div class="metric-label">Attack Recall (Detection Rate)</div>
-                <div class="metric-value" style="color: #10b981;">{ensemble_row['Attack Recall'] * 100:.2f}%</div>
-            </div>
-            """, unsafe_allow_html=True)
-        with an_c3:
-            st.markdown(f"""
-            <div class="metric-card">
-                <div class="metric-label">Attack Precision</div>
-                <div class="metric-value" style="color: #8b5cf6;">{ensemble_row['Attack Precision'] * 100:.2f}%</div>
-            </div>
-            """, unsafe_allow_html=True)
-        with an_c4:
-            st.markdown(f"""
-            <div class="metric-card">
-                <div class="metric-label">Overall Test Accuracy</div>
-                <div class="metric-value" style="color: #f59e0b;">{ensemble_row['Accuracy'] * 100:.2f}%</div>
-            </div>
-            """, unsafe_allow_html=True)
-
-        st.markdown("<br>", unsafe_allow_html=True)
-
-        # Model Comparison Chart
-        st.markdown("#### 📊 Comparative Model Evaluation (Test Set: 82,332 Flows)")
-        comp_metrics = ['Accuracy', 'Balanced Accuracy', 'Attack Precision', 'Attack Recall', 'Attack F1', 'ROC-AUC']
-        
-        melted_df = metrics_df.melt(id_vars=['Model'], value_vars=comp_metrics, var_name='Metric', value_name='Score')
-        fig_comp = px.bar(
-            melted_df,
-            x='Metric',
-            y='Score',
-            color='Model',
-            barmode='group',
-            color_discrete_map={
-                'Random Forest': '#3b82f6',
-                'XGBoost': '#f59e0b',
-                'Weighted Ensemble': '#10b981'
-            },
-            title="Performance Comparison: Random Forest vs XGBoost vs Weighted Ensemble"
-        )
-        fig_comp.update_layout(
-            template="plotly_dark",
-            plot_bgcolor="#111827",
-            paper_bgcolor="#111827",
-            yaxis=dict(range=[0.75, 1.0]),
-            margin=dict(l=20, r=20, t=40, b=20)
-        )
-        st.plotly_chart(fig_comp, use_container_width=True)
-
-    # 2. Confusion Matrix & Trade-Offs
-    st.markdown("---")
-    cm_col1, cm_col2 = st.columns([1, 1.2])
-
-    with cm_col1:
-        st.markdown("#### 🔲 Confusion Matrix Heatmap")
-        selected_model_cm = st.selectbox(
-            "Select Evaluation Model",
-            ["Weighted Ensemble", "XGBoost", "Random Forest"]
-        )
-
-        if cm_path.exists():
-            with open(cm_path, "r") as f:
-                cm_data = json.load(f)
-
-            cm_dict = cm_data.get(selected_model_cm, {})
-            tn = cm_dict.get('TN', 28536)
-            fp = cm_dict.get('FP', 8464)
-            fn = cm_dict.get('FN', 876)
-            tp = cm_dict.get('TP', 44456)
-            total = tn + fp + fn + tp
-
-            # Matrix: rows = Actual (Normal, Attack), cols = Predicted (Normal, Attack)
-            z_matrix = [[tn, fp], [fn, tp]]
-            z_text = [
-                [f"True Normal<br><b>{tn:,}</b> ({tn/total*100:.1f}%)", f"False Positive<br><b>{fp:,}</b> ({fp/total*100:.1f}%)"],
-                [f"False Negative<br><b>{fn:,}</b> ({fn/total*100:.1f}%)", f"True Attack<br><b>{tp:,}</b> ({tp/total*100:.1f}%)"]
-            ]
-
-            fig_cm = ff_fig = go.Figure(data=go.Heatmap(
-                z=z_matrix,
-                x=['Predicted Normal', 'Predicted Attack'],
-                y=['Actual Normal', 'Actual Attack'],
-                text=z_text,
-                texttemplate="%{text}",
-                textfont={"size": 13, "color": "white"},
-                colorscale='Blues',
-                showscale=False
-            ))
-            fig_cm.update_layout(
-                template="plotly_dark",
-                plot_bgcolor="#111827",
-                paper_bgcolor="#111827",
-                margin=dict(l=20, r=20, t=20, b=20),
-                height=320
-            )
-            st.plotly_chart(fig_cm, use_container_width=True)
-
-            st.caption(f"**SOC Takeaway:** Out of **{tp+fn:,}** actual attack flows, the {selected_model_cm} caught **{tp:,}** attacks ({tp/(tp+fn)*100:.2f}% recall), missing only **{fn:,}** flows.")
-
-    with cm_col2:
-        st.markdown("#### 📉 ROC Curve & Threshold Sensitivity")
-        
-        # Benchmark ROC data representation
-        fpr_points = np.linspace(0, 1, 200)
-        # Synthetic parameterized ROC curves matching test ROC-AUC = 0.9845
-        tpr_ensemble = 1 - (1 - fpr_points) ** 14.2
-        tpr_xgb = 1 - (1 - fpr_points) ** 13.8
-        tpr_rf = 1 - (1 - fpr_points) ** 13.5
-
-        fig_roc = go.Figure()
-        fig_roc.add_trace(go.Scatter(x=fpr_points, y=tpr_ensemble, mode='lines', name='Weighted Ensemble (AUC = 0.9845)', line=dict(color='#10b981', width=3)))
-        fig_roc.add_trace(go.Scatter(x=fpr_points, y=tpr_xgb, mode='lines', name='XGBoost (AUC = 0.9841)', line=dict(color='#f59e0b', width=2, dash='dot')))
-        fig_roc.add_trace(go.Scatter(x=fpr_points, y=tpr_rf, mode='lines', name='Random Forest (AUC = 0.9839)', line=dict(color='#3b82f6', width=2, dash='dash')))
-        fig_roc.add_trace(go.Scatter(x=[0, 1], y=[0, 1], mode='lines', name='Random Guess (AUC = 0.5000)', line=dict(color='#64748b', dash='dash')))
-
-        fig_roc.update_layout(
-            template="plotly_dark",
-            plot_bgcolor="#111827",
-            paper_bgcolor="#111827",
-            xaxis_title="False Positive Rate (FPR)",
-            yaxis_title="True Positive Rate (TPR / Recall)",
-            title="Receiver Operating Characteristic (ROC) Benchmark",
-            legend=dict(orientation="h", yanchor="bottom", y=-0.35),
-            margin=dict(l=20, r=20, t=35, b=20),
-            height=320
-        )
-        st.plotly_chart(fig_roc, use_container_width=True)
-
-    # Threshold Adjustment Simulator
-    with st.expander("🎚️ Interactive Precision / Recall Threshold Simulator", expanded=False):
-        sim_threshold = st.slider("Select Bayesian Decision Threshold", 0.1, 0.9, 0.5, step=0.05)
-        # Approximate precision & recall trade-off curve around benchmark values
-        est_recall = max(0.80, min(0.999, 0.9807 - (sim_threshold - 0.5) * 0.12))
-        est_precision = max(0.60, min(0.96, 0.8401 + (sim_threshold - 0.5) * 0.22))
-        est_fp_reduction = max(-50.0, (sim_threshold - 0.5) * 80.0)
-
-        s_c1, s_c2, s_c3 = st.columns(3)
-        with s_c1:
-            st.metric("Estimated Attack Recall", f"{est_recall * 100:.1f}%", f"{(est_recall - 0.9807)*100:+.1f}% vs default")
-        with s_c2:
-            st.metric("Estimated Attack Precision", f"{est_precision * 100:.1f}%", f"{(est_precision - 0.8401)*100:+.1f}% vs default")
-        with s_c3:
-            st.metric("False Positive Alarm Shift", f"{est_fp_reduction:+.1f}%")
-        st.caption("Raising the threshold (e.g. 0.65) reduces SOC alert fatigue by suppressing borderline false alarms, while lowering it (e.g. 0.35) maximizes detection of stealthy low-and-slow intrusions.")
-
-    # 3. Global Feature Importance Ranking
-    st.markdown("---")
-    st.markdown("#### 🏆 Global Feature Importance Ranking (XGBoost & Random Forest)")
-    st.caption("Which network flow metrics have the highest predictive weight in classifying malicious vs normal traffic?")
-
-    feat_model_choice = st.radio(
-        "Select Model Architecture for Feature Importance",
-        ["XGBoost Pipeline", "Random Forest Pipeline"],
-        horizontal=True
-    )
-
-    try:
-        if feat_model_choice == "XGBoost Pipeline":
-            prep = engine.xgb_model.named_steps['preprocessor']
-            feat_names = prep.get_feature_names_out()
-            clf = engine.xgb_model.named_steps['classifier']
-            importances = clf.feature_importances_
-        else:
-            prep = engine.rf_model.named_steps['preprocessor']
-            feat_names = prep.get_feature_names_out()
-            clf = engine.rf_model.named_steps['classifier']
-            importances = clf.feature_importances_
-
-        sorted_indices = importances.argsort()[::-1][:15]
-        top_feat_df = pd.DataFrame({
-            "Feature": [feat_names[i].replace('num__', '').replace('cat__', '') for i in sorted_indices],
-            "Relative Importance": [importances[i] for i in sorted_indices]
-        })
-
-        fig_feat = px.bar(
-            top_feat_df,
-            x="Relative Importance",
-            y="Feature",
-            orientation="h",
-            color="Relative Importance",
-            color_continuous_scale="Viridis",
-            title=f"Top 15 Most Predictive Flow Features ({feat_model_choice})"
-        )
-        fig_feat.update_layout(
-            template="plotly_dark",
-            plot_bgcolor="#111827",
-            paper_bgcolor="#111827",
-            yaxis=dict(autorange="reversed"),
-            margin=dict(l=20, r=20, t=40, b=20),
-            height=420
-        )
-        st.plotly_chart(fig_feat, use_container_width=True)
-
-    except Exception as e:
-        st.warning(f"Could not compute real-time feature importances: {e}")
-
-    # Deep-Dive Callout on Dominant Features
-    fi_col1, fi_col2 = st.columns(2)
-    with fi_col1:
-        st.markdown("""
-        <div style="background-color: #1e293b; border: 1px solid #334155; border-left: 5px solid #3b82f6; border-radius: 8px; padding: 16px;">
-            <h4 style="margin: 0 0 8px 0; color: #60a5fa;">💡 Why does <code>sttl</code> carry ~48% predictive weight?</h4>
-            <p style="font-size: 0.88rem; color: #cbd5e1; line-height: 1.5; margin: 0;">
-                Operating system network stacks have rigid, deterministic default TTL values: <b>Linux/Android uses 64</b>, <b>Windows uses 128</b>, and <b>BSD/Cisco uses 255</b>.
-                Adversarial tools like <b>Nmap</b>, <b>Scapy</b>, and <b>Hping3</b> craft raw packets with TTL set to <b>254 or 255</b> to maximize reach.
-                Furthermore, spoofed IP packets travel across anomalous hop distances. This makes TTL disparity an indelible mathematical fingerprint of attack traffic.
-            </p>
-        </div>
-        """, unsafe_allow_html=True)
-
-    with fi_col2:
-        st.markdown("""
-        <div style="background-color: #1e293b; border: 1px solid #334155; border-left: 5px solid #10b981; border-radius: 8px; padding: 16px;">
-            <h4 style="margin: 0 0 8px 0; color: #34d399;">💡 Why do <code>ct_state_ttl</code> & <code>ct_dst_src_ltm</code> matter?</h4>
-            <p style="font-size: 0.88rem; color: #cbd5e1; line-height: 1.5; margin: 0;">
-                Normal user connections vary in state, protocol, and target services. In contrast, automated intrusion campaigns (port sweeps, brute force, and DoS floods)
-                spray dozens of connections per second sharing identical states (e.g. <code>INT</code>, <code>REQ</code>) and identical TTLs.
-                Tracking window density metrics over 100-connection intervals immediately isolates bot bursts from legitimate browsing.
-            </p>
-        </div>
-        """, unsafe_allow_html=True)
-
-    # 4. Searchable 42-Feature UNSW-NB15 Dictionary
-    st.markdown("---")
-    st.markdown("#### 📖 Complete 42-Feature UNSW-NB15 Security Dictionary")
+with main_tab_dictionary:
+    st.subheader("📖 Complete 42-Feature UNSW-NB15 Security Dictionary")
     st.caption("Detailed definitions, physical units, and intrusion detection significance for every engineered feature.")
 
     search_col1, search_col2 = st.columns([1.5, 1])

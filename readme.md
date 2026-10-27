@@ -11,8 +11,7 @@ Benchmarked against the **UNSW-NB15** network security dataset.
 ```text
 1. Network Ingestion
    ├── 🎙️ Live Network Sniffer (Wi-Fi, Ethernet, Loopback via Scapy AsyncSniffer)
-   ├── 📁 File Upload (.pcap, .pcapng, .csv)
-   └── 🚀 Demo Presets (benign_traffic.pcap, attack_synflood.pcap)
+   └── 📁 File Upload (.pcap, .pcapng, .csv)
       │
       ▼
 2. Packet Dissection & Flow Aggregation (src/feature_extraction.py)
@@ -139,10 +138,6 @@ Network Intrusion Detection/
 │   ├── multiclass_model.joblib   # Trained 9-category classifier (<1MB)
 │   ├── multiclass_labels.joblib  # Multi-class label encoder
 │   └── ensemble_config.json      # Pipeline weights and thresholds
-├── data/
-│   ├── benign_traffic.pcap       # Benign web/DNS test capture
-│   ├── attack_synflood.pcap      # SYN flood / port scan test capture
-│   └── generate_pcaps.py         # Packet synthesizer script
 ├── notebooks/                    # Research and exploration notebooks (01-05)
 ├── requirements.txt              # Standard UTF-8 Python dependencies
 └── readme.md                     # Documentation
