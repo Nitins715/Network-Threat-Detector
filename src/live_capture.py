@@ -15,6 +15,14 @@ def is_pcap_installed() -> bool:
     return bool(getattr(conf, "use_pcap", False))
 
 
+__all__ = [
+    'is_pcap_installed',
+    'get_available_interfaces',
+    'LiveCaptureSession',
+    'simulate_live_traffic_capture'
+]
+
+
 def get_available_interfaces() -> dict:
     """
     Returns a dictionary of available network interfaces with friendly names and IPs.

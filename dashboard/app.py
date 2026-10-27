@@ -24,9 +24,18 @@ from src.prediction import ThreatPredictionEngine
 from src.live_capture import (
     get_available_interfaces,
     LiveCaptureSession,
-    simulate_live_traffic_capture,
-    is_pcap_installed
+    simulate_live_traffic_capture
 )
+
+try:
+    from src.live_capture import is_pcap_installed
+except ImportError:
+    def is_pcap_installed() -> bool:
+        try:
+            from scapy.all import conf
+            return bool(getattr(conf, "use_pcap", False))
+        except Exception:
+            return False
 from src.report_generator import generate_executive_pdf_report
 from src.feature_dictionary import FEATURE_DICTIONARY
 
@@ -144,12 +153,13 @@ with st.sidebar:
         # Sort so active adapters with real IP addresses appear first
         sorted_labels = sorted(interfaces.keys(), key=lambda x: ('192.168' not in x and '10.' not in x))
 
+        options = sorted_labels[:10] if sorted_labels else ["Default Interface"]
         selected_iface_label = st.selectbox(
             "Network Adapter",
-            options=sorted_labels[:10],
+            options=options,
             help="Select the hardware or virtual network adapter to monitor"
         )
-        selected_iface_name = interfaces[selected_iface_label]
+        selected_iface_name = interfaces.get(selected_iface_label, "eth0")
 
         sniff_engine = st.radio(
             "Sniffing Engine",
@@ -292,6 +302,13 @@ with main_tab_threat:
             primary_category = results.get('primary_category', 'Normal')
             category_counts = results.get('category_counts', {})
             playbook = results.get('playbook', {})
+
+            # Enrich flows_df with prediction outputs and explanations
+            threshold = engine.config.get('threshold', 0.5)
+            flows_df['threat_score'] = scores
+            flows_df['prediction'] = ['ATTACK' if s >= threshold else 'NORMAL' for s in scores]
+            flows_df['attack_category'] = results.get('flow_categories', ['Normal'] * len(flows_df))
+            flows_df['primary_threat_driver'] = engine.explain_all_flows(flows_df)
 
             # -------------------------------------------------
             # 1. Executive Verdict Banner
@@ -539,8 +556,8 @@ with main_tab_threat:
 
             with col_act_2:
                 st.markdown("#### 🛡️ Multi-Platform Firewall Defense Rules:")
-                has_attacks = (flows_df['prediction'] == 'ATTACK').any()
-                primary_attacker_ip = flows_df[flows_df['prediction'] == 'ATTACK']['src_ip'].iloc[0] if has_attacks else '192.168.1.100'
+                has_attacks = ('prediction' in flows_df.columns) and (flows_df['prediction'] == 'ATTACK').any()
+                primary_attacker_ip = flows_df[flows_df['prediction'] == 'ATTACK']['src_ip'].iloc[0] if (has_attacks and 'src_ip' in flows_df.columns) else '192.168.1.100'
 
                 fw_tab_win, fw_tab_linux, fw_tab_snort = st.tabs(["Windows Defender", "Linux (iptables)", "Snort / Suricata Rule"])
                 with fw_tab_win:

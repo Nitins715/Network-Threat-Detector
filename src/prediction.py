@@ -33,7 +33,12 @@ ATTACK_RATIO_THRESHOLD = 0.3
 
 class ThreatPredictionEngine:
     def __init__(self, models_dir: str = "models"):
-        self.models_dir = Path(models_dir)
+        p = Path(models_dir)
+        if not p.is_absolute() and not p.exists():
+            root = Path(__file__).resolve().parent.parent
+            if (root / models_dir).exists():
+                p = root / models_dir
+        self.models_dir = p
         self.rf_model = None
         self.xgb_model = None
         self.config = {}
