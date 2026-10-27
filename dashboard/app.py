@@ -169,8 +169,15 @@ with st.sidebar:
         )
 
         if sniff_engine == "Native Scapy Sniffer (Admin/Npcap)":
-            if not is_pcap_installed():
-                st.warning("⚠️ **Npcap Packet Driver Not Found**")
+            if os.name != 'nt':
+                st.info(
+                    "☁️ **Streamlit Cloud Environment Notice:**\n\n"
+                    "This public demo is hosted on Streamlit's cloud server. A cloud website cannot physically connect to your home Wi-Fi antenna or local Ethernet card over the internet.\n\n"
+                    "• 👉 **To test live detection here on the cloud:** Select **'Live Traffic Stream (Instant Demo)'** above or upload a capture file!\n"
+                    "• 💻 **To sniff your real physical Wi-Fi:** Run this app locally on your PC (`python -m streamlit run dashboard/app.py`)."
+                )
+            elif not is_pcap_installed():
+                st.warning("⚠️ **Npcap Packet Driver Not Found on Local PC**")
                 with st.expander("📥 How to Download & Install Npcap (1-Minute Setup)", expanded=True):
                     st.markdown("""
                     **Why is this needed?** Windows protects your network card and blocks Python from reading raw Wi-Fi/Ethernet packets without Npcap.
