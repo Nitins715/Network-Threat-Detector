@@ -1,8 +1,28 @@
 # 🛡️ Network Detector — Network Intrusion Detection System (NIDS)
 
+[![Streamlit App](https://static.streamlit.io/badges/streamlit_badge_black_white.svg)](https://nitins715-network-threat-detector-dashboardapp-izqlia.streamlit.app/)
+[![GitHub Repository](https://img.shields.io/badge/GitHub-Repository-181717?logo=github)](https://github.com/Nitins715/Network-Threat-Detector)
+[![Python 3.10+](https://img.shields.io/badge/python-3.10+-blue.svg)](https://www.python.org/downloads/)
+[![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](https://opensource.org/licenses/MIT)
+
+> 🌐 **Live Interactive Dashboard:** [https://nitins715-network-threat-detector-dashboardapp-izqlia.streamlit.app/](https://nitins715-network-threat-detector-dashboardapp-izqlia.streamlit.app/)  
+> 🔗 **GitHub Source Repository:** [https://github.com/Nitins715/Network-Threat-Detector](https://github.com/Nitins715/Network-Threat-Detector)
+
 > An end-to-end Machine Learning–based Network Threat Intelligence Platform that ingests live network streams, `.pcap` / `.pcapng` packet captures, and flow datasets; extracts 32 flow-level features using Scapy & NFStream; classifies threats with an ensemble of Random Forest and XGBoost classifiers paired with an Isolation Forest anomaly detector; attributes root causes with **Tree SHAP (Explainable AI)**; categorizes threats into **9 attack families**; and deploys automated **firewall incident response playbooks**.
 
 Benchmarked against the **UNSW-NB15** network security dataset.
+
+---
+
+## 📸 Dashboard & Report Structure
+
+### 🖥️ SOC Threat Intelligence Dashboard
+![SOC Threat Intelligence Dashboard](assets/dashboard_preview.png)
+*Real-time threat verdict banner, multi-dimensional security KPI cards, live traffic timeline trajectory, and category distribution.*
+
+### 📄 Executive Network Threat Intelligence Report (PDF Export)
+![Executive Network Threat Intelligence Report Structure](assets/executive_report_preview.png)
+*C-level threat briefing featuring vector exposure gauge, Geo-IP host attribution, Tree SHAP flow telemetry, and automated SOC incident containment playbooks.*
 
 ---
 

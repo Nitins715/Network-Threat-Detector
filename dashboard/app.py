@@ -120,6 +120,7 @@ with st.sidebar:
     st.image("https://img.icons8.com/fluency/96/shield.png", width=64)
     st.title("Network Detector")
     st.caption("Machine Learning Network Intrusion Detection")
+    st.link_button("⭐ View on GitHub", "https://github.com/Nitins715/Network-Threat-Detector", use_container_width=True)
 
     st.markdown("---")
     st.subheader("📁 Input Capture")
@@ -259,8 +260,13 @@ with st.sidebar:
 # ---------------------------------------------------------
 # Top Header & Navigation Tabs
 # ---------------------------------------------------------
-st.title("🛡️ Network Threat Detector")
-st.markdown("Automated packet dissection, 32-feature UNSW-NB15 flow extraction, and ensemble threat verdict.")
+header_col1, header_col2 = st.columns([3.2, 1.3])
+with header_col1:
+    st.title("🛡️ Network Threat Detector")
+    st.markdown("Automated packet dissection, 32-feature UNSW-NB15 flow extraction, and ensemble threat verdict.")
+with header_col2:
+    st.markdown("<div style='margin-top: 18px;'></div>", unsafe_allow_html=True)
+    st.link_button("⭐ GitHub Repository", "https://github.com/Nitins715/Network-Threat-Detector", use_container_width=True)
 
 main_tab_threat, main_tab_dictionary = st.tabs([
     "🛡️ SOC Threat Intelligence",
