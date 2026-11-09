@@ -120,7 +120,7 @@ with st.sidebar:
     st.image("https://img.icons8.com/fluency/96/shield.png", width=64)
     st.title("Network Detector")
     st.caption("Machine Learning Network Intrusion Detection")
-    st.link_button("⭐ View on GitHub", "https://github.com/Nitins715/Network-Threat-Detector", use_container_width=True)
+    st.link_button("⭐ View on GitHub", "https://github.com/Nitins715/Network-Threat-Detector", width="stretch")
 
     st.markdown("---")
     st.subheader("📁 Input Capture")
@@ -192,14 +192,14 @@ with st.sidebar:
                     
                     *(Note: On Linux or macOS, raw packet capture works natively without Npcap).*
                     """)
-                    st.link_button("🌐 Download Free Npcap Installer", "https://npcap.com/#download", use_container_width=True)
+                    st.link_button("🌐 Download Free Npcap Installer", "https://npcap.com/#download", width="stretch")
                     st.caption("💡 *Tip: You can also select **'Live Traffic Stream'** above for instant testing without installing anything.*")
             else:
                 st.success("✅ **Npcap Active:** Ready to sniff physical network packets.")
 
         capture_duration = st.slider("Duration (seconds)", 3, 30, 5)
 
-        if st.button("▶️ Start Live Sniff", use_container_width=True, type="primary"):
+        if st.button("▶️ Start Live Sniff", width="stretch", type="primary"):
             progress_bar = st.progress(0.0)
             status_box = st.empty()
 
@@ -248,14 +248,15 @@ with st.sidebar:
 
     st.markdown("---")
     with st.expander("⚙️ Model Pipeline Specs", expanded=False):
-        st.write("**Supervised Classifiers:**")
-        st.write("• Random Forest (50%)")
-        st.write("• XGBoost (50%)")
+        st.write("**Supervised Tri-Ensemble:**")
+        st.write("• Random Forest (30%)")
+        st.write("• XGBoost (40%)")
+        st.write("• LightGBM (30%)")
         st.write("**Unsupervised Detector:**")
         st.write("• Isolation Forest (Zero-Day Anomaly)")
         st.write("**Decision Fusion:**")
-        st.write("• 50/50 Bayesian Score Combination")
-        st.write(f"• Threshold: `{engine.config.get('threshold', 0.5)}`")
+        st.write("• 80/20 Bayesian Score Combination")
+        st.write(f"• Threshold: `{engine.config.get('threshold', 0.65)}`")
 
 # ---------------------------------------------------------
 # Top Header & Navigation Tabs
@@ -266,11 +267,11 @@ with header_col1:
     st.markdown("Automated packet dissection, 32-feature UNSW-NB15 flow extraction, and ensemble threat verdict.")
 with header_col2:
     st.markdown("<div style='margin-top: 18px;'></div>", unsafe_allow_html=True)
-    st.link_button("⭐ GitHub Repository", "https://github.com/Nitins715/Network-Threat-Detector", use_container_width=True)
+    st.link_button("⭐ GitHub Repository", "https://github.com/Nitins715/Network-Threat-Detector", width="stretch")
 
 main_tab_threat, main_tab_dictionary = st.tabs([
     "🛡️ SOC Threat Intelligence",
-    "📖 UNSW-NB15 Feature Dictionary"
+    "📖 Model Feature Dictionary (32 Extracted Features)"
 ])
 
 # =========================================================
@@ -407,7 +408,7 @@ with main_tab_threat:
                     margin=dict(l=20, r=20, t=40, b=20),
                     yaxis=dict(range=[0, 1.05])
                 )
-                st.plotly_chart(fig_timeline, use_container_width=True)
+                st.plotly_chart(fig_timeline, width="stretch")
 
             with viz_col2:
                 st.subheader("🎯 Threat Distribution")
@@ -443,7 +444,7 @@ with main_tab_threat:
                             margin=dict(l=10, r=10, t=10, b=10),
                             legend=dict(orientation="h", yanchor="bottom", y=-0.3)
                         )
-                        st.plotly_chart(fig_cat, use_container_width=True)
+                        st.plotly_chart(fig_cat, width="stretch")
                     else:
                         st.info("No categorical classifications available.")
 
@@ -466,7 +467,7 @@ with main_tab_threat:
                         paper_bgcolor="#111827",
                         margin=dict(l=10, r=10, t=10, b=10)
                     )
-                    st.plotly_chart(fig_pie, use_container_width=True)
+                    st.plotly_chart(fig_pie, width="stretch")
 
             # -------------------------------------------------
             # 4. Flow Telemetry Table & XAI Root Cause
@@ -481,7 +482,7 @@ with main_tab_threat:
                     'state', 'prediction', 'attack_category', 'threat_score', 'primary_threat_driver'
                 ] if c in flows_df.columns
             ]
-            st.dataframe(flows_df[display_cols], use_container_width=True, height=240)
+            st.dataframe(flows_df[display_cols], width="stretch", height=240)
 
             # Interactive Single-Flow XAI Deep Dive
             with st.expander("🔍 Deep-Dive: Inspect Flow Feature Attribution (Tree SHAP)", expanded=True):
@@ -497,44 +498,51 @@ with main_tab_threat:
                     target_flow = flows_df.iloc[[selected_flow_idx]]
                     explanation = engine.explain_flow(flows_df, flow_index=selected_flow_idx)
 
-                    xai_col1, xai_col2 = st.columns([1.2, 1])
-                    with xai_col1:
-                        st.markdown("#### Top Contributing Factors (Tree SHAP Values):")
-                        top_factors = explanation.get('top_factors', [])
-                        if top_factors:
-                            xai_chart_df = pd.DataFrame(top_factors)
-                            xai_chart_df['Impact'] = xai_chart_df['shap_value'].apply(lambda x: 'Pushes ATTACK' if x > 0 else 'Pushes NORMAL')
-                            
-                            fig_shap = px.bar(
-                                xai_chart_df,
-                                x='shap_value',
-                                y='feature',
-                                orientation='h',
-                                color='Impact',
-                                color_discrete_map={'Pushes ATTACK': '#ef4444', 'Pushes NORMAL': '#10b981'},
-                                text='impact_pct',
-                                title=f"Feature Push on Flow #{selected_flow_idx+1}"
-                            )
-                            fig_shap.update_layout(
-                                template="plotly_dark",
-                                plot_bgcolor="#111827",
-                                paper_bgcolor="#111827",
-                                margin=dict(l=10, r=10, t=30, b=10),
-                                yaxis=dict(autorange="reversed")
-                            )
-                            st.plotly_chart(fig_shap, use_container_width=True)
-                        else:
-                            st.info("SHAP attribution not available for this flow.")
+                    # Render SHAP bar chart full width
+                    st.markdown("#### 📊 Top Contributing Factors (Tree SHAP Values):")
+                    top_factors = explanation.get('top_factors', [])
+                    if top_factors:
+                        xai_chart_df = pd.DataFrame(top_factors)
+                        xai_chart_df['Impact'] = xai_chart_df['shap_value'].apply(lambda x: 'Pushes ATTACK' if x > 0 else 'Pushes NORMAL')
+                        
+                        fig_shap = px.bar(
+                            xai_chart_df,
+                            x='shap_value',
+                            y='feature',
+                            orientation='h',
+                            color='Impact',
+                            color_discrete_map={'Pushes ATTACK': '#ef4444', 'Pushes NORMAL': '#10b981'},
+                            text='impact_pct',
+                            title=f"Feature Push on Flow #{selected_flow_idx+1}"
+                        )
+                        fig_shap.update_layout(
+                            template="plotly_dark",
+                            plot_bgcolor="#111827",
+                            paper_bgcolor="#111827",
+                            margin=dict(l=10, r=10, t=35, b=10),
+                            height=380,
+                            yaxis=dict(autorange="reversed")
+                        )
+                        st.plotly_chart(fig_shap, width="stretch")
+                    else:
+                        st.info("SHAP attribution not available for this flow.")
 
-                    with xai_col2:
-                        st.markdown("#### Security Analyst Interpretation:")
+                    # Security Analyst Interpretation cleanly arranged BELOW the graph
+                    st.markdown("---")
+                    st.markdown("#### 🛡️ Security Analyst Interpretation & Root Cause Analysis")
+                    
+                    interp_col1, interp_col2 = st.columns([1, 1.4])
+                    with interp_col1:
                         st.markdown(f"**Target Flow:** `{flow_options[selected_flow_idx]}`")
                         st.markdown(f"**Threat Category:** `{flows_df.iloc[selected_flow_idx].get('attack_category', 'Normal')}`")
                         st.markdown(f"**Anomaly Confidence:** `{flows_df.iloc[selected_flow_idx].get('threat_score', 0.0):.3f}`")
-                        st.markdown("---")
+                        st.caption(explanation.get('analyst_summary', ''))
+
+                    with interp_col2:
                         st.markdown("**Dominant Threat Signatures:**")
-                        for idx, tf in enumerate(explanation.get('top_factors', []), 1):
-                            st.markdown(f"**{idx}. `{tf['feature']}` = `{tf['value']}`** ({tf['impact_pct']})")
+                        for idx, tf in enumerate(explanation.get('top_factors', [])[:4], 1):
+                            color_badge = "#ef4444" if tf['shap_value'] > 0 else "#10b981"
+                            st.markdown(f"**{idx}. `{tf['feature']}` = `{tf['value']}`** &nbsp; <span style='color: {color_badge}; font-weight: bold;'>({tf['impact_pct']})</span>", unsafe_allow_html=True)
                             st.caption(tf.get('explanation', 'Metric evaluated by tree model.'))
 
             # -------------------------------------------------
@@ -609,7 +617,7 @@ with main_tab_threat:
                     file_name=f"Executive_Threat_Report_{clean_stem}.pdf",
                     mime="application/pdf",
                     help="Generates an executive SOC PDF report with vector threat gauges, Geo-IP breakdown, and remediation playbooks.",
-                    use_container_width=True
+                    width="stretch"
                 )
 
             with col_dl2:
@@ -621,7 +629,7 @@ with main_tab_threat:
                     file_name=f"threat_telemetry_{clean_stem}.csv",
                     mime="text/csv",
                     help="Raw flow features with XGBoost / Random Forest scores and SHAP attributions.",
-                    use_container_width=True
+                    width="stretch"
                 )
 
     else:
@@ -641,21 +649,28 @@ with main_tab_threat:
 
 
 # =========================================================
-# TAB 2: UNSW-NB15 42-Feature Security Dictionary
+# TAB 2: Model Feature Dictionary (Active 32 Features)
 # =========================================================
 with main_tab_dictionary:
-    st.subheader("📖 Complete 42-Feature UNSW-NB15 Security Dictionary")
-    st.caption("Detailed definitions, physical units, and intrusion detection significance for every engineered feature.")
+    st.subheader("📖 Model Feature Dictionary (32 Features Extracted in Real Time)")
+    st.caption("Detailed definitions, physical units, and intrusion detection significance for the 32 real-time features extracted and evaluated by the Tri-Ensemble.")
+
+    # Filter dictionary strictly to the 32 features extracted by the system
+    active_32_keys = set(FEATURE_COLUMNS)
 
     search_col1, search_col2 = st.columns([1.5, 1])
     with search_col1:
         search_query = st.text_input("🔍 Search features by name, keyword, or attack type:", placeholder="e.g. sttl, handshake, flood, http...")
     with search_col2:
-        categories = ["All Categories"] + sorted(list(set(v['category'] for v in FEATURE_DICTIONARY.values())))
+        available_cats = sorted(list(set(FEATURE_DICTIONARY[k]['category'] for k in active_32_keys if k in FEATURE_DICTIONARY)))
+        categories = ["All Categories"] + available_cats
         selected_category = st.selectbox("Filter by Category", categories)
 
     filtered_dict = {}
-    for feat_key, feat_info in FEATURE_DICTIONARY.items():
+    for feat_key in sorted(active_32_keys):
+        if feat_key not in FEATURE_DICTIONARY:
+            continue
+        feat_info = FEATURE_DICTIONARY[feat_key]
         # Filter by category
         if selected_category != "All Categories" and feat_info['category'] != selected_category:
             continue
@@ -673,10 +688,10 @@ with main_tab_dictionary:
                 continue
         filtered_dict[feat_key] = feat_info
 
-    st.write(f"Showing **{len(filtered_dict)}** of 42 features:")
+    st.write(f"Showing **{len(filtered_dict)}** of 32 live extracted features:")
 
     for feat_key, feat_info in filtered_dict.items():
-        with st.expander(f"**{feat_info['name']}** — *{feat_info['category']}*"):
+        with st.expander(f"**{feat_info['name']} (`{feat_key}`)** — *{feat_info['category']}*"):
             c_a, c_b = st.columns([1.2, 1])
             with c_a:
                 st.markdown(f"**Definition:** {feat_info['definition']}")

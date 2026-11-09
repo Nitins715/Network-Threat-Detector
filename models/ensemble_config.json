@@ -4,7 +4,7 @@
   "lgb_weight": 0.3,
   "bayesian_sup_weight": 0.8,
   "bayesian_iso_weight": 0.2,
-  "threshold": 0.5,
+  "threshold": 0.65,
   "feature_columns": [
     "dur",
     "proto",

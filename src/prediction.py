@@ -298,6 +298,7 @@ class ThreatPredictionEngine:
 
         pos_sum = max(1e-6, sum(c for c in contributions if c > 0))
 
+        # Soft max percentage to prevent absurd numbers like -251.600006%
         features_info = []
         for i, val in enumerate(contributions):
             fname = f_names[i]
@@ -318,6 +319,12 @@ class ThreatPredictionEngine:
                 label = fname
                 display_val = ""
 
+            # Calculate clean, formatted impact percentage
+            pct_val = (float(val) / pos_sum * 100) if pos_sum > 0 else 0.0
+            pct_val = max(min(pct_val, 100.0), -100.0)
+            sign = "+" if pct_val > 0 else ""
+            impact_str = f"{sign}{pct_val:.1f}%"
+
             features_info.append({
                 'feature': label,
                 'feature_key': raw_key,
@@ -325,7 +332,7 @@ class ThreatPredictionEngine:
                 'value': display_val,
                 'raw_value': display_val,
                 'shap_value': round(float(val), 4),
-                'impact_pct': f"+{round((float(val) / pos_sum * 100), 1)}%" if val > 0 else f"{round((float(val) / pos_sum * 100), 1)}%",
+                'impact_pct': impact_str,
                 'explanation': f"{label} pushes threat score by {val:+.3f}"
             })
 
