@@ -71,10 +71,16 @@ Benchmarked against the **UNSW-NB15** network security dataset.
 
 ## ⚡ Core Capabilities
 
-### 1. 🎙️ Real-Time Live Capture Mode
+### 1. 🎙️ Real-Time Live Capture & 32-Flow Metric Dissection
 * Sniffs live network traffic directly from physical or virtual network adapters (`Wi-Fi`, `Ethernet`, `Software Loopback`).
-* Features an asynchronous sniffer engine ([src/live_capture.py](src/live_capture.py)) and a safe live stream generator.
-* Flushes captured packets into temporary buffers and feeds them into the flow extractor automatically.
+* **Bidirectional Flow Dissection (`src/feature_extraction.py`):** Rather than treating packets in isolation, groups raw packets into two-way conversations by their 5-tuple (`src_ip, dst_ip, src_port, dst_port, proto`) and extracts **32 real-time flow metrics**:
+  * **Baseline Conversation:** `dur`, `proto`, `service`, `state`, `spkts`, `dpkts`, `sbytes`, `dbytes`.
+  * **Throughput & Load:** `sload`, `dload`, `smean`, `dmean`.
+  * **Routing & TTL Fingerprints:** `sttl`, `dttl` (detects OS spoofing and crafted hop counts).
+  * **Handshake & Window Timings:** `tcprtt`, `synack`, `swin`, `dwin` (flags SYN flood anomalies and buffer limits).
+  * **Application-Layer Behavior:** `trans_depth`, `response_body_len`, `is_ftp_login`.
+  * **Sliding-Window Connection Densities (100 flows):** `ct_state_ttl`, `ct_srv_src`, `ct_src_dport_ltm`, `ct_dst_sport_ltm`, `ct_dst_src_ltm`, `ct_srv_dst`, `ct_flw_http_mthd`, `is_sm_ips_ports`.
+* **32-to-42 Alignment (`src/prediction.py`):** Real-time inference extracts these 32 high-signal wire features on the fly and cleanly zero-fills 10 deep-state historical counters (e.g. multi-hour sequence tracking like `stcpb`, `sjit`), ensuring sub-millisecond inference latency with zero lag.
 
 ### 2. 🔬 Explainable AI (XAI) with Tree SHAP
 * Solves the black-box problem by explaining **why** a flow was flagged as malicious.
@@ -115,13 +121,24 @@ From the root workspace directory:
 Open your browser to:
 👉 **`http://localhost:8501`**
 
-### 2. Live Sniffing
+### 2. Run the REST API Backend (FastAPI)
+For headless microservices, SIEM integrations, or automated firewalls:
+
+```powershell
+.\.venv\Scripts\python.exe -m uvicorn api.app:app --host 0.0.0.0 --port 8000 --reload
+```
+
+* Interactive Swagger Docs: 👉 **`http://localhost:8000/docs`**
+* Health Probe: `GET http://localhost:8000/health`
+* Flow Batch Prediction: `POST http://localhost:8000/predict` (upload UNSW-NB15 flow CSV)
+
+### 3. Live Sniffing
 1. In the sidebar under **Select Input Source**, pick **🎙️ Live Network Sniff**.
 2. Select your network adapter (`Wi-Fi`, `Ethernet`, etc.).
 3. Choose your duration and click **▶️ Start Live Sniff**.
 4. The dashboard records the live traffic, extracts telemetry, calculates threat scores, and updates the threat charts in real time!
 
-### 3. Training Scripts
+### 4. Training Scripts
 * **Isolation Forest (Unsupervised):**
   ```powershell
   .\.venv\Scripts\python.exe src/train_isolation_forest.py --samples 5000
@@ -150,6 +167,8 @@ Network Intrusion Detection/
 │   └── train_multiclass.py       # Standalone 9-category classifier trainer
 ├── dashboard/
 │   └── app.py                    # Streamlit SOC Threat Intelligence interface
+├── api/
+│   └── app.py                    # FastAPI REST endpoint (/predict, /health, /docs)
 ├── models/
 │   ├── random_forest.joblib      # Trained Random Forest pipeline (<25MB)
 │   ├── xgboost.joblib            # Trained XGBoost pipeline (<1MB)

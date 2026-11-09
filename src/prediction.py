@@ -41,6 +41,7 @@ class ThreatPredictionEngine:
         self.models_dir = p
         self.rf_model = None
         self.xgb_model = None
+        self.lgb_model = None
         self.config = {}
         self.iso_forest = None
         self._load_artifacts()
@@ -49,6 +50,7 @@ class ThreatPredictionEngine:
         """Loads trained pipelines, isolation forest, and ensemble config."""
         rf_path = self.models_dir / "random_forest.joblib"
         xgb_path = self.models_dir / "xgboost.joblib"
+        lgb_path = self.models_dir / "lightgbm.joblib"
         cfg_path = self.models_dir / "ensemble_config.json"
         iso_path = self.models_dir / "isolation_forest.joblib"
         iso_cols_path = self.models_dir / "iso_num_cols.joblib"
@@ -57,6 +59,8 @@ class ThreatPredictionEngine:
             self.rf_model = joblib.load(rf_path)
         if xgb_path.exists():
             self.xgb_model = joblib.load(xgb_path)
+        if lgb_path.exists():
+            self.lgb_model = joblib.load(lgb_path)
         if cfg_path.exists():
             with open(cfg_path, "r") as f:
                 self.config = json.load(f)
@@ -125,17 +129,30 @@ class ThreatPredictionEngine:
         return np.array([0.1])
 
     def predict_ensemble(self, X_df: pd.DataFrame) -> np.ndarray:
-        """Averages predicted probabilities from Random Forest and XGBoost."""
+        """Averages predicted probabilities from Random Forest, XGBoost, and LightGBM."""
         probs = []
+        weights = []
         if self.rf_model is not None:
             rf_prob = self.rf_model.predict_proba(X_df)[:, 1]
             probs.append(rf_prob)
+            weights.append(self.config.get("rf_weight", 0.30))
         if self.xgb_model is not None:
             xgb_prob = self.xgb_model.predict_proba(X_df)[:, 1]
             probs.append(xgb_prob)
+            weights.append(self.config.get("xgb_weight", 0.40))
+        if self.lgb_model is not None:
+            lgb_prob = self.lgb_model.predict_proba(X_df)[:, 1]
+            probs.append(lgb_prob)
+            weights.append(self.config.get("lgb_weight", 0.30))
 
         if not probs:
             return np.zeros(len(X_df))
+
+        # Weighted average if weights match, else simple mean
+        if len(weights) == len(probs) and sum(weights) > 0:
+            norm_weights = np.array(weights) / sum(weights)
+            weighted_prob = sum(w * p for w, p in zip(norm_weights, probs))
+            return weighted_prob
 
         return np.mean(probs, axis=0)
 

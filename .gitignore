@@ -45,3 +45,7 @@ temp/
 
 # Large Raw Datasets (UNSW-NB15 raw CSVs are >40MB)
 data/raw/
+
+# Interview Questionnaire & Personal Study Notes
+questionare.md
+questionnaire.md
