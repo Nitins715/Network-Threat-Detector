@@ -8,7 +8,7 @@
 > 🌐 **Live Interactive Dashboard:** [https://nitins715-network-threat-detector-dashboardapp-izqlia.streamlit.app/](https://nitins715-network-threat-detector-dashboardapp-izqlia.streamlit.app/)  
 > 🔗 **GitHub Source Repository:** [https://github.com/Nitins715/Network-Threat-Detector](https://github.com/Nitins715/Network-Threat-Detector)
 
-> An end-to-end Machine Learning–based Network Threat Intelligence Platform that ingests live network streams, `.pcap` / `.pcapng` packet captures, and flow datasets; extracts 32 flow-level features using Scapy & NFStream; classifies threats with an ensemble of Random Forest and XGBoost classifiers paired with an Isolation Forest anomaly detector; attributes root causes with **Tree SHAP (Explainable AI)**; categorizes threats into **9 attack families**; and deploys automated **firewall incident response playbooks**.
+> An end-to-end Machine Learning–based Network Threat Intelligence Platform that ingests live network streams, `.pcap` / `.pcapng` packet captures, and flow datasets; extracts 32 flow-level features using Scapy & NFStream; classifies threats with a **Supervised Tri-Ensemble (Random Forest, XGBoost, LightGBM)** paired with an **Isolation Forest anomaly detector (Zero-Day coverage)** via **Bayesian Decision Fusion**; attributes root causes with **Tree SHAP (Explainable AI)**; categorizes threats into **10 threat classes (9 attack families + Normal)**; and deploys automated **firewall incident response playbooks**.
 
 Benchmarked against the **UNSW-NB15** network security dataset.
 
@@ -47,13 +47,13 @@ Benchmarked against the **UNSW-NB15** network security dataset.
       ▼
 4. Preprocessing & Alignment (src/prediction.py)
    ├── Aligns real-time features to 42 UNSW-NB15 model input space
-   └── Handles missing/infinite values & categorical encoding
+   └── Handles missing/infinite values & compact encoding
       │
-      ├───► Supervised Ensemble (50% Random Forest + 50% XGBoost)
+      ├───► Supervised Tri-Ensemble (30% RF + 40% XGBoost + 30% LightGBM)
       └───► Unsupervised Anomaly Detection (Isolation Forest for Zero-Days)
       │
       ▼
-5. Bayesian Score Fusion: 0.5 * P(Ensemble) + 0.5 * P(Anomaly)
+5. Bayesian Score Fusion: 0.80 * P(Ensemble) + 0.20 * P(Anomaly) [Threshold: 0.65]
       │
       ├───► 🔬 Explainable AI (XAI): Tree SHAP feature attribution & top attack drivers
       └───► 🎯 Multi-Class Classifier: Categorizes into 9 specific attack categories
@@ -63,7 +63,8 @@ Benchmarked against the **UNSW-NB15** network security dataset.
    ├── Real-time Threat Score Timeline & Flow Severity Ratios (Plotly)
    ├── 9-Class Threat Category Distribution Bar Chart
    ├── Flow Inspection Telemetry Table with Primary Attack Drivers
-   ├── Top 3 Attack Factors Cards with Percentage Risk Impacts
+   ├── Tree SHAP Root Cause Bar Chart with Security Analyst Interpretation
+   ├── Active 32-Feature Real-Time Model Dictionary
    └── 🚨 Automated Incident Response & Multi-Platform Firewall Playbooks
 ```
 
@@ -138,19 +139,14 @@ For headless microservices, SIEM integrations, or automated firewalls:
 3. Choose your duration and click **▶️ Start Live Sniff**.
 4. The dashboard records the live traffic, extracts telemetry, calculates threat scores, and updates the threat charts in real time!
 
-### 4. Training Scripts
-* **Isolation Forest (Unsupervised):**
-  ```powershell
-  .\.venv\Scripts\python.exe src/train_isolation_forest.py --samples 5000
-  ```
-* **Multi-Class Threat Classifier (9 Categories):**
-  ```powershell
-  .\.venv\Scripts\python.exe src/train_multiclass.py --sample-size 35000
-  ```
-* **Generate Synthetic Test PCAPs:**
-  ```powershell
-  .\.venv\Scripts\python.exe data/generate_pcaps.py
-  ```
+### 4. Interactive Jupyter Notebooks (End-to-End ML Pipeline)
+All model training, feature engineering, and evaluation steps are organized into 6 clean, standalone notebooks:
+* `notebooks/01_eda.ipynb` — Exploratory Data Analysis & Attack Taxonomy
+* `notebooks/02_preprocessing.ipynb` — Compact Encoding, Imputation & Standard Scaling
+* `notebooks/03_baseline_model.ipynb` — Baseline Logistic Regression & Decision Tree Benchmarks
+* `notebooks/04_model_experimentation.ipynb` — Tri-Ensemble (RF + XGB + LightGBM) + Calibrated Isolation Forest
+* `notebooks/05_final_evaluation.ipynb` — Full 82,332 Test Evaluation, Bayesian Fusion & Production Model Serialization
+* `notebooks/06_multiclass_threat_categorization.ipynb` — 10-Class Threat Categorization & Playbook Model Trainer
 
 ---
 
@@ -161,10 +157,10 @@ Network Intrusion Detection/
 ├── src/
 │   ├── __init__.py
 │   ├── feature_extraction.py     # 32-feature extraction engine (Scapy + NFStream)
-│   ├── prediction.py             # Ensemble + Isolation Forest + SHAP XAI + Playbooks
+│   ├── prediction.py             # Tri-Ensemble + Isolation Forest + SHAP XAI + Playbooks
 │   ├── live_capture.py           # Live adapter sniffing & stream generator
-│   ├── train_isolation_forest.py # Standalone Isolation Forest trainer
-│   └── train_multiclass.py       # Standalone 9-category classifier trainer
+│   ├── feature_dictionary.py     # 42 UNSW-NB15 feature metadata dictionary
+│   └── report_generator.py       # Executive PDF threat report compiler
 ├── dashboard/
 │   └── app.py                    # Streamlit SOC Threat Intelligence interface
 ├── api/
@@ -172,12 +168,13 @@ Network Intrusion Detection/
 ├── models/
 │   ├── random_forest.joblib      # Trained Random Forest pipeline (<25MB)
 │   ├── xgboost.joblib            # Trained XGBoost pipeline (<1MB)
+│   ├── lightgbm.joblib           # Trained LightGBM pipeline (<1MB)
 │   ├── isolation_forest.joblib   # Trained baseline Isolation Forest
 │   ├── iso_num_cols.joblib       # Feature order for anomaly detection
-│   ├── multiclass_model.joblib   # Trained 9-category classifier (<1MB)
+│   ├── multiclass_model.joblib   # Trained 10-class threat classifier (<1MB)
 │   ├── multiclass_labels.joblib  # Multi-class label encoder
-│   └── ensemble_config.json      # Pipeline weights and thresholds
-├── notebooks/                    # Research and exploration notebooks (01-05)
+│   └── ensemble_config.json      # Pipeline weights and calibrated threshold (0.65)
+├── notebooks/                    # 6 structured research & training notebooks (01-06)
 ├── requirements.txt              # Standard UTF-8 Python dependencies
 └── readme.md                     # Documentation
 ```
